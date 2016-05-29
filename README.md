@@ -1,7 +1,7 @@
 
 # LXD Sabayon Linux image builder
 
-This scripts creates a [Sabayon Linux](https://sabayonlinux.org) image to use with [LXD](https://linuxcontainers.org/lxd/).
+This script creates a [Sabayon Linux](https://sabayonlinux.org) image to use with [LXD](https://linuxcontainers.org/lxd/).
 Actually i think it can be used to create an lxd image from any docker image, but it's untested.
 
 ## Usage
