@@ -24,7 +24,7 @@ create_metadata() {
     "architecture": "$ARCH",
     "creation_date": $release_epoch,
     "properties": {
-        "architecture": "$arch",
+        "architecture": "$ARCH",
         "description": "$DISTRO $RELEASE ($release_date)",
         "name": "$DISTRO-$RELEASE-$release_date",
         "os": "$OS",
