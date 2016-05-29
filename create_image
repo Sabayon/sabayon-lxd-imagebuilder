@@ -1,0 +1,102 @@
+#!/bin/bash
+# Sabayon lxc image builder script
+# mudler@sabayon.org
+# credits for lxc image structure goes to https://github.com/saghul/lxd-alpine-builder
+set -e
+if [ "$(id -u)" != "0" ]; then
+   echo "This script must be run as root" 1>&2
+   exit 1
+fi
+
+HOST_ARCH="${HOST_ARCH:-amd64}"
+ARCH="${ARCH:-x86_64}"
+IMAGE="${IMAGE:-sabayon/base-amd64}"
+DISTRO="${DISTRO:-Sabayon}"
+OS="${OS:-sabayon}"
+RELEASE="${RELEASE:-16}"
+
+create_metadata() {
+    release_epoch=$(date +%s)
+    release_date=$(date +%Y%m%d_%H:%M)
+
+    cat <<EOF > metadata.yaml
+{
+    "architecture": "$ARCH",
+    "creation_date": $release_epoch,
+    "properties": {
+        "architecture": "$arch",
+        "description": "$DISTRO $RELEASE ($release_date)",
+        "name": "$DISTRO-$RELEASE-$release_date",
+        "os": "$OS",
+        "release": "$RELEASE",
+        "variant": "default"
+    },
+    "templates": {
+        "/etc/hostname": {
+            "template": "hostname.tpl",
+            "when": [
+                "create"
+            ]
+        },
+        "/etc/hosts": {
+            "template": "hosts.tpl",
+            "when": [
+                "create"
+            ]
+        }
+    }
+}
+EOF
+
+    mkdir -p templates
+
+    cat <<EOF > templates/hostname.tpl
+{{ container.name }}
+EOF
+
+    cat <<EOF > templates/hosts.tpl
+127.0.0.1   localhost
+127.0.1.1   {{ container.name }}
+# The following lines are desirable for IPv6 capable hosts
+::1     ip6-localhost ip6-loopback
+fe00::0 ip6-localnet
+ff00::0 ip6-mcastprefix
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
+EOF
+
+    return 0
+}
+
+package_image() {
+    release_date=$(date +%Y%m%d_%H%M)
+
+    tar -zcf $OS-$RELEASE-$ARCH-$release_date.tar.gz --numeric-owner metadata.yaml templates rootfs
+    rm -f metadata.yaml
+    rm -rf templates
+    rm -rf rootfs
+}
+
+
+update_docker_companion() {
+
+	type docker-companion >/dev/null 2>&1 || {
+	echo >&2 "Fetching docker-companion for you, and placing it under bin/"
+	curl -s https://api.github.com/repos/mudler/docker-companion/releases/latest \
+		| grep "browser_download_url.*${HOST_ARCH}" \
+		| cut -d : -f 2,3 \
+		| tr -d \" \
+		| wget -i - -N -O docker-companion
+	chmod +x docker-companion
+}
+}
+
+
+update_docker_companion
+
+[[ -e "docker-companion" ]] \
+	&& ./docker-companion --pull unpack "${IMAGE}" $(pwd)/rootfs \
+	|| docker-companion --pull unpack "${IMAGE}" $(pwd)/rootfs
+
+create_metadata || die "Failed to create metadata"
+package_image || die "Failed to package image"
