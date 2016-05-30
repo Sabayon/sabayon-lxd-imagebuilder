@@ -21,8 +21,8 @@ To specify the arch of the host (it will fetch the unpacker for you) which is pe
     
 To specify a different target architecture, use ARCH, defaults to x86_64
 
-    sudo ARCH="x86_64" IMAGE="sabayon/armhfp" ./create_image
-    
+    sudo HOST_ARCH="amd64" ARCH="armv7l" IMAGE="sabayon/armhfp" ./create_image
+
 You can tweak also other variables:
 
 * **RELEASE** to specify a release version (defaults to "16")
