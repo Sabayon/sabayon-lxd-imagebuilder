@@ -74,6 +74,8 @@ package_image() {
    rm -f metadata.yaml
    rm -rf templates
    rm -rf rootfs
+
+   return 0
 }
 
 
@@ -187,7 +189,7 @@ unprivileged_rootfs() {
 
    local cpwd=`pwd`
 
-   cd ${STAGING_DIR}/etc/systemd/system
+   cd ${STAGING_DIR}/rootfs/etc/systemd/system
 
    # Disable systemd-journald-audit.socket because it seems that doesn't
    # start correctly on unprivileged container
@@ -198,7 +200,18 @@ unprivileged_rootfs() {
    ln -s /dev/null systemd-remount-fs.service
 
    # Clean journal directory (to avoid permission errors)
-   rm -rf ${STAGING_DIR}/var/log/journal/
+   rm -rf ${STAGING_DIR}/rootfs/var/log/journal/
+
+   # Change execution of service systemd-sysctl to avoid errors.
+   mkdir systemd-sysctl.service.d
+   cat <<EOF > systemd-sysctl.service.d/00gentoo.conf
+[Service]
+ExecStart=
+ExecStart=/usr/lib/systemd/systemd-sysctl  --prefix=/etc/sysctl.d/
+EOF
+
+   # Disable mount of hugepages
+   ln -s /dev/null dev-hugepages.mount
 
    cd ${cpwd}
 
@@ -206,6 +219,8 @@ unprivileged_rootfs() {
 }
 
 main() {
+
+   local cpwd=`pwd`
 
    parse_args "$@"
 
@@ -220,6 +235,8 @@ main() {
       && ./docker-companion --pull unpack "${IMAGE}" ${STAGING_DIR}/rootfs \
       || docker-companion --pull unpack "${IMAGE}" ${STAGING_DIR}/rootfs
 
+   cd ${STAGING_DIR}
+
    create_metadata || die "Failed to create metadata"
 
    if [ ${UNPRIVILEGED} -eq 1 ] ; then
@@ -227,6 +244,8 @@ main() {
    fi
 
    package_image || die "Failed to package image"
+
+   cd ${cpwd}
 
    exit 0
 

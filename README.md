@@ -37,6 +37,14 @@ After the image is built it can be added as an image to LXD as follows:
 
 >   lxc image import sabayon-v0.1-x86_64-20160529_100.tar.gz --alias sabayon-v0.1
 
+After that image is imported, then for create Sabayon Container unprivileged:
+
+>   lxc launch sabayon-v0.1 sabayon-unpriv-container01
+
+or for privileged container:
+
+>   lxc launch sabayon-v0.1 sabayon-priv-container01 -c security.privileged=true
+
 
 ## LXD Daemon configuration
 
@@ -45,7 +53,7 @@ Sabayon OS is based on Systemd that require some particular option on LXC and LX
 For LXD daemon is needed override lxd.service file with these options:
 
 ```bash
-$# cat lxd.service.d/00gentoo.conf 
+$# cat /etc/systemd/system/lxd.service.d/00gentoo.conf 
 
 [Service]
 LimitNOFILE=infinity
