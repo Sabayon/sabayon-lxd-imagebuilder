@@ -44,7 +44,7 @@ Sabayon OS is based on Systemd that require some particular option on LXC and LX
 
 For LXD daemon is needed override lxd.service file with these options:
 
-> # cat lxd.service.d/00gentoo.conf 
+> $# cat lxd.service.d/00gentoo.conf 
 > 
 > [Service]
 > LimitNOFILE=infinity
@@ -52,7 +52,7 @@ For LXD daemon is needed override lxd.service file with these options:
 
 For permit use of CGroup to Systemd service inside container:
 
-> # cat /etc/lxc/lxc.conf 
+> $# cat /etc/lxc/lxc.conf 
 > lxc.cgroup.use = @all
 
 To see all available options of LXC module go to [here](https://github.com/lxc/lxd/blob/master/doc/configuration.md).
