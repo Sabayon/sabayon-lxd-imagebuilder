@@ -21,7 +21,7 @@ You can supply a docker image as source:
 
 To specify the arch of the host (it will fetch the unpacker for you) which is performing the operation, define it with HOST_ARCH otherwise will default to amd64
 
->   sudo HOST_ARCH="arm" ARCH="argm7l" IMAGE="sabayon/armhfp" ./create_image
+>   sudo HOST_ARCH="arm" ARCH="armv7l" IMAGE="sabayon/armhfp" ./create_image
     
 To specify a different target architecture, use ARCH, defaults to x86_64
 
