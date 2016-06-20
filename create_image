@@ -1,7 +1,6 @@
 #!/bin/bash
 # Sabayon lxc image builder script
-# mudler@sabayon.org
-# credits for lxc image structure goes to https://github.com/saghul/lxd-alpine-builder
+# mudler@sabayon.org, geaaru
 set -e
 HOST_ARCH="${HOST_ARCH:-amd64}"
 ARCH="${ARCH:-`uname -m`}"
@@ -250,4 +249,4 @@ main() {
 main "$@"
 
 
-# vim: ts=3 sw=3 expandtab filetype=sh
+
