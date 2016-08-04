@@ -212,6 +212,10 @@ EOF
 
    popd
 
+   # Disable sabayon-anti-fork-bomb limits (already apply to lxc container manager)
+   sed -i -e 's/^*/#*/g'   ./etc/security/limits.d/00-sabayon-anti-fork-bomb.conf || return 1
+   sed -i -e 's/^root/#root/g'   ./etc/security/limits.d/00-sabayon-anti-fork-bomb.conf || return 1
+
    return 0
 }
 
