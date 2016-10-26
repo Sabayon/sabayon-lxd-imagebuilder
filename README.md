@@ -32,8 +32,9 @@ You can tweak also other variables:
 * **RELEASE** to specify a release version (defaults to "16")
 * **OS** to specify a operative system (defaults to "sabayon")
 * **DISTRO** to specify a distribution (defaults to "Sabayon")
+* **LXD_TARGET** to specify target LXD server where import image (default to "local:")
 
-After the image is built it can be added as an image to LXD as follows:
+After the image is built it can be added as an image to LXD as follow command or automatically if --import option is set:
 
 >   lxc image import sabayon-v0.1-x86_64-20160529_100.tar.gz --alias sabayon-v0.1
 

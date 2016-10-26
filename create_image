@@ -11,12 +11,15 @@ RELEASE="${RELEASE:-16}"
 UNPRIVILEGED="${UNPRIVILEGED:-0}"
 STAGING_DIR="${STAGING_DIR:-`pwd`}"
 IMAGE_DESCR=""
+IMPORT_IMAGE="${IMPORT_IMAGE:-0}"
+LXD_TARGET="local:"
+
+release_date=""
 
 create_metadata() {
    release_epoch=$(date +%s)
 
 	if [ -z "${IMAGE_DESCR}" ] ; then
-      release_date=$(date +%Y%m%d_%H:%M)
       IMAGE_DESCR="$DISTRO $RELEASE ($release_date)"
    fi
 
@@ -67,7 +70,6 @@ EOF
 }
 
 package_image() {
-   release_date=$(date +%Y%m%d_%H%M)
 
    tar -zcf $OS-$RELEASE-$ARCH-$release_date.tar.gz --numeric-owner metadata.yaml templates rootfs
    rm -f metadata.yaml
@@ -112,6 +114,8 @@ Script for create LXD image from Docker image.
                  tarball. Default is \`pwd\`.
 --image          Docker image to use as source.
                  Default is: sabayon/base-amd64
+--import         Automatically import tarball as image to LXD server.
+                 Default: disable.
 --image-descr    Set image description string.
                  Default is: \$DISTRO \$RELEASE (\$release_date)
 
@@ -127,6 +131,7 @@ RELEASE          Identify Release of the distro. Default is: 16
 UNPRIVILEGED     Alternative to --unprivileged option.
 STAGING_DIR      Alternative to --stagingdir option.
 IMAGE_DESCR      Alternative to --image-descr option.
+LXD_TARGET       Set target LXD server where import image.
 
 NOTE: This script MUST be execute as root.
 "
@@ -135,7 +140,7 @@ NOTE: This script MUST be execute as root.
 parse_args() {
 
    local short_opts="h"
-   local long_opts="help arch: host-arch: unprivileged stagingdir: image-descr: image:"
+   local long_opts="help arch: host-arch: unprivileged stagingdir: image-descr: image: import"
 
    $(set -- $(getopt -u -q -a -o "$short_opts" -l "$long_opts" -- "$@")) 
 
@@ -169,6 +174,9 @@ parse_args() {
             IMAGE="$2"
             shift
             ;;
+         --import)
+            IMPORT_IMAGE=1
+            ;;
          --)
             ;;
          *)
@@ -180,6 +188,24 @@ parse_args() {
 
       shift
    done
+
+   return 0
+}
+
+import2lxd() {
+   local image_type=""
+
+   if [ ${UNPRIVILEGED} -eq 1 ] ; then
+      image_type="unprivileged"
+   else
+      image_type="privileged"
+   fi
+
+   local alias="sabayon-$image_type-$release_date"
+
+   lxc image import \
+      $OS-$RELEASE-$ARCH-$release_date.tar.gz \
+      $LXD_TARGET --alias $alias || return 1
 
    return 0
 }
@@ -236,6 +262,7 @@ main() {
 
    pushd ${STAGING_DIR}
 
+   release_date=$(date +%Y%m%d_%H%M)
    create_metadata || die "Failed to create metadata"
 
    if [ ${UNPRIVILEGED} -eq 1 ] ; then
@@ -244,6 +271,10 @@ main() {
 
    package_image || die "Failed to package image"
 
+   if [ ${IMPORT_IMAGE} -eq 1 ] ; then
+      import2lxd || die "Error on import image to LXD server $LXD_TARGET."
+   fi
+
    popd
 
    exit 0
@@ -251,6 +282,4 @@ main() {
 }
 
 main "$@"
-
-
 
