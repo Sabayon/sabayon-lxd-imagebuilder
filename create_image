@@ -69,6 +69,12 @@ EOF
    return 0
 }
 
+die() {
+   echo $1
+
+   exit 1
+}
+
 package_image() {
 
    tar -zcf $OS-$RELEASE-$ARCH-$release_date.tar.gz --numeric-owner metadata.yaml templates rootfs
@@ -238,9 +244,13 @@ EOF
 
    popd
 
+   pushd ${STAGING_DIR}/rootfs
+
    # Disable sabayon-anti-fork-bomb limits (already apply to lxc container manager)
    sed -i -e 's/^*/#*/g'   ./etc/security/limits.d/00-sabayon-anti-fork-bomb.conf || return 1
    sed -i -e 's/^root/#root/g'   ./etc/security/limits.d/00-sabayon-anti-fork-bomb.conf || return 1
+
+   popd
 
    return 0
 }
