@@ -8,24 +8,24 @@ Actually i think it can be used to create an lxd image from any docker image, bu
 
 In order to see all available options execute:
 
->  ./create_image -h (or --help) 
+>  ./sabayon-lxd-imagebuilder -h (or --help) 
 
 In order to build the latest Sabayon (x86_64) image just run the script (must be done
 as root):
 
->   sudo ./create_image
+>   sudo ./sabayon-lxd-imagebuilder
 
 You can supply a docker image as source:
 
->   sudo IMAGE="sabayon/builder-amd64" ./create_image
+>   sudo IMAGE="sabayon/builder-amd64" ./sabayon-lxd-imagebuilder
 
 To specify the arch of the host (it will fetch the unpacker for you) which is performing the operation, define it with HOST_ARCH otherwise will default to amd64
 
->   sudo HOST_ARCH="arm" ARCH="armv7l" IMAGE="sabayon/armhfp" ./create_image
+>   sudo HOST_ARCH="arm" ARCH="armv7l" IMAGE="sabayon/armhfp" ./sabayon-lxd-imagebuilder
     
 To specify a different target architecture, use ARCH, defaults to x86_64
 
->   sudo HOST_ARCH="amd64" ARCH="armv7l" IMAGE="sabayon/armhfp" ./create_image
+>   sudo HOST_ARCH="amd64" ARCH="armv7l" IMAGE="sabayon/armhfp" ./sabayon-lxd-imagebuilder
 
 You can tweak also other variables:
 

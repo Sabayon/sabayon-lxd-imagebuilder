@@ -19,7 +19,7 @@ release_date=""
 create_metadata() {
    release_epoch=$(date +%s)
 
-	if [ -z "${IMAGE_DESCR}" ] ; then
+   if [ -z "${IMAGE_DESCR}" ] ; then
       IMAGE_DESCR="$DISTRO $RELEASE ($release_date)"
    fi
 
@@ -88,21 +88,21 @@ package_image() {
 
 update_docker_companion() {
 
-	type docker-companion >/dev/null 2>&1 || {
-		echo >&2 "Fetching docker-companion for you, and placing it under bin/"
-		curl -s https://api.github.com/repos/mudler/docker-companion/releases/latest \
-			| grep "browser_download_url.*${HOST_ARCH}" \
-			| cut -d : -f 2,3 \
-			| tr -d \" \
-			| wget -i - -N -O docker-companion
-		chmod +x docker-companion
-	}
+   type docker-companion >/dev/null 2>&1 || {
+      echo >&2 "Fetching docker-companion for you, and placing it under bin/"
+      curl -s https://api.github.com/repos/mudler/docker-companion/releases/latest \
+         | grep "browser_download_url.*${HOST_ARCH}" \
+         | cut -d : -f 2,3 \
+         | tr -d \" \
+         | wget -i - -N -O docker-companion
+      chmod +x docker-companion
+   }
 }
 
 
 help_msg() {
 
-   echo "create_image:
+   echo "sabayon-lxd-imagebuilder:
 Script for create LXD image from Docker image.
 
 -h|--help        This message.
