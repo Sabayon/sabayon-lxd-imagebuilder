@@ -71,6 +71,31 @@ lxc.cgroup.use = @all
 To see all available options of LXC module go to [here](https://github.com/lxc/lxd/blob/master/doc/configuration.md).
 
 
+## Unprivileged containers
+
+Sabayon systemd package currently has `default-hierarchy=hybrid` as compilation option and this means that on boot
+container try to use Cgroup v2 and so it doesn't bootstrap correctly.
+
+After create container it is needed force use of Cgroup V1 version with this option on LXD container config:
+
+(For lxc <= 2.0.x):
+
+```yaml
+config:
+  raw.lxc: |
+    lxc.init_cmd = /sbin/init systemd.legacy_systemd_cgroup_controller=yes
+```
+
+(For lxc >= 2.1.x):
+
+```yaml
+config:
+  raw.lxc: |
+    lxc.init.cmd = /sbin/init systemd.legacy_systemd_cgroup_controller=yes
+```
+
+For details about this issue see [here](https://github.com/lxc/lxc/issues/1669).
+
 ## License
 
 This script uses the same license as the script it was derived from: LGPL 2.1
