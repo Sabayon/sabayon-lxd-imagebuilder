@@ -73,7 +73,7 @@ To see all available options of LXC module go to [here](https://github.com/lxc/l
 
 ## Unprivileged containers
 
-Sabayon systemd package currently has `default-hierarchy=hybrid` as compilation option and this means that on boot
+Sabayon systemd package (>=233) currently has `default-hierarchy=hybrid` as compilation option and this means that on boot
 container try to use Cgroup v2 and so it doesn't bootstrap correctly.
 
 After create container it is needed force use of Cgroup V1 version with this option on LXD container config:
@@ -95,6 +95,8 @@ config:
 ```
 
 For details about this issue see [here](https://github.com/lxc/lxc/issues/1669).
+
+This could be not needed when will be available >=lxcfs-2.0.8 and >=lxc-2.1.0.
 
 ## License
 
