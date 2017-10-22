@@ -13,11 +13,14 @@ STAGING_DIR="${STAGING_DIR:-`pwd`}"
 IMAGE_DESCR=""
 IMPORT_IMAGE="${IMPORT_IMAGE:-0}"
 LXD_TARGET="local:"
+PULL_SKIP="${PULL_SKIP:-0}"
 
 release_date=""
 
 create_metadata() {
    release_epoch=$(date +%s)
+
+   pushd ${STAGING_DIR}
 
    if [ -z "${IMAGE_DESCR}" ] ; then
       IMAGE_DESCR="$DISTRO $RELEASE ($release_date)"
@@ -66,6 +69,8 @@ ff02::1 ip6-allnodes
 ff02::2 ip6-allrouters
 EOF
 
+   popd
+
    return 0
 }
 
@@ -77,10 +82,14 @@ die() {
 
 package_image() {
 
+   pushd ${STAGING_DIR}
+
    tar -zcf $OS-$RELEASE-$ARCH-$release_date.tar.gz --numeric-owner metadata.yaml templates rootfs
    rm -f metadata.yaml
    rm -rf templates
    rm -rf rootfs
+
+   popd
 
    return 0
 }
@@ -138,6 +147,8 @@ UNPRIVILEGED     Alternative to --unprivileged option.
 STAGING_DIR      Alternative to --stagingdir option.
 IMAGE_DESCR      Alternative to --image-descr option.
 LXD_TARGET       Set target LXD server where import image.
+PULL_SKIP        Skip pull of image to force use of local docker
+                 image if is available.
 
 NOTE: This script MUST be execute as root.
 "
@@ -201,6 +212,8 @@ parse_args() {
 import2lxd() {
    local image_type=""
 
+   pushd ${STAGING_DIR}
+
    if [ ${UNPRIVILEGED} -eq 1 ] ; then
       image_type="unprivileged"
    else
@@ -209,9 +222,15 @@ import2lxd() {
 
    local alias="sabayon-$image_type-$release_date"
 
+   if [ -n "${IMAGE_ALIAS}" ] ; then
+      alias="${IMAGE_ALIAS}"
+   fi
+
    lxc image import \
       $OS-$RELEASE-$ARCH-$release_date.tar.gz \
       $LXD_TARGET --alias $alias || return 1
+
+   popd
 
    return 0
 }
@@ -255,6 +274,36 @@ EOF
    return 0
 }
 
+export_docker_rootfs () {
+
+   local tmp_container="tmp$(date +%Y%m%d_%H%M%s)"
+
+   if [[ -z "${PULL_SKIP}"  ||  "${PULL_SKIP}" == "0" ]] ; then
+     [[ -e "docker-companion" ]] \
+        && ./docker-companion --pull unpack "${IMAGE}" ${STAGING_DIR}/rootfs \
+        || docker-companion --pull unpack "${IMAGE}" ${STAGING_DIR}/rootfs
+   else
+
+     # Create temporary container from image
+     docker create --name ${tmp_container} "${IMAGE}"
+
+     mkdir -p ${STAGING_DIR}/rootfs
+
+     pushd "${STAGING_DIR}"/rootfs
+
+     # Export rootfs from container to staging dir
+     docker export  "${tmp_container}" | tar -xpf -
+
+     # Remove temporary container
+     docker rm ${tmp_container}
+
+     popd
+
+   fi
+
+   return 0
+}
+
 main() {
 
    parse_args "$@"
@@ -264,13 +313,9 @@ main() {
       exit 1
    fi
 
-   update_docker_companion
+#   update_docker_companion
 
-   [[ -e "docker-companion" ]] \
-      && ./docker-companion --pull unpack "${IMAGE}" ${STAGING_DIR}/rootfs \
-      || docker-companion --pull unpack "${IMAGE}" ${STAGING_DIR}/rootfs
-
-   pushd ${STAGING_DIR}
+   export_docker_rootfs
 
    release_date=$(date +%Y%m%d_%H%M)
    create_metadata || die "Failed to create metadata"
@@ -284,8 +329,6 @@ main() {
    if [ ${IMPORT_IMAGE} -eq 1 ] ; then
       import2lxd || die "Error on import image to LXD server $LXD_TARGET."
    fi
-
-   popd
 
    exit 0
 
