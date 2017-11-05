@@ -11,7 +11,7 @@ RELEASE="${RELEASE:-16}"
 UNPRIVILEGED="${UNPRIVILEGED:-0}"
 UNPRIVILEGED_CUSTOM_FUNCTIONS=""
 STAGING_DIR="${STAGING_DIR:-`pwd`}"
-IMAGE_DESCR=""
+IMAGE_DESCR="${IMAGE_DESCR}"
 IMPORT_IMAGE="${IMPORT_IMAGE:-0}"
 LXD_TARGET="local:"
 PULL_SKIP="${PULL_SKIP:-0}"
@@ -250,7 +250,7 @@ import2lxd() {
 
    lxc image import \
       $OS-$RELEASE-$ARCH-$release_date.tar.gz \
-      $LXD_TARGET --alias $alias || return 1
+      $LXD_TARGET --alias "${alias}" || return 1
 
    popd
 
