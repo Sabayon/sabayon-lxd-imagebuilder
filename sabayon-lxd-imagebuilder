@@ -9,6 +9,7 @@ DISTRO="${DISTRO:-Sabayon}"
 OS="${OS:-sabayon}"
 RELEASE="${RELEASE:-16}"
 UNPRIVILEGED="${UNPRIVILEGED:-0}"
+UNPRIVILEGED_CUSTOM_FUNCTIONS=""
 STAGING_DIR="${STAGING_DIR:-`pwd`}"
 IMAGE_DESCR=""
 IMPORT_IMAGE="${IMPORT_IMAGE:-0}"
@@ -125,6 +126,10 @@ Script for create LXD image from Docker image.
                  image for permit running of the image under unprivileged mode.
                  It's usable only for Sabayon/Gentoo Image with SystemD.
                  Default is disable and created image is for privileged mode.
+--unpriv-funcs [FILENAME]
+                 Permit to supply custom functions to execute before
+                 create tarball for LXD. To use custom functions
+                 is needed then device UNPRIVILEGED_FUNCTIONS variable.
 --stagingdir     Set staging directory where unpack docker image and create
                  tarball. Default is \`pwd\`.
 --image          Docker image to use as source.
@@ -133,6 +138,8 @@ Script for create LXD image from Docker image.
                  Default: disable.
 --image-descr    Set image description string.
                  Default is: \$DISTRO \$RELEASE (\$release_date)
+                 NOTE: Use date on description doesn't permit
+                       to override old image of the same docker image.
 
 Some options could be set also as environment variables:
 HOST_ARCH        Alternative to --host-arch option.
@@ -144,11 +151,22 @@ RELEASE          Identify Release of the distro. Default is: 16
                  This variable is used only when IMAGE_DESCR or --image-descr
                  is not used.
 UNPRIVILEGED     Alternative to --unprivileged option.
+UNPRIVILEGED_FUNCTIONS
+                 Permits to define list of functions execute on
+                 target rootfs. This is needed for use script
+                 on docker image not sabayon.
+                 On default are executes these functions:
+                   - systemd_sysctl
+                   - remountfs
+                   - journald
+                   - dev_hugepages
+                   - sec_limits
+                   - clean_journal
 STAGING_DIR      Alternative to --stagingdir option.
 IMAGE_DESCR      Alternative to --image-descr option.
 LXD_TARGET       Set target LXD server where import image.
 PULL_SKIP        Skip pull of image to force use of local docker
-                 image if is available.
+                 image if it is available.
 
 NOTE: This script MUST be execute as root.
 "
@@ -157,7 +175,7 @@ NOTE: This script MUST be execute as root.
 parse_args() {
 
    local short_opts="h"
-   local long_opts="help arch: host-arch: unprivileged stagingdir: image-descr: image: import"
+   local long_opts="help arch: host-arch: unprivileged stagingdir: image-descr: image: import unpriv-funcs:"
 
    $(set -- $(getopt -u -q -a -o "$short_opts" -l "$long_opts" -- "$@")) 
 
@@ -178,6 +196,10 @@ parse_args() {
             ;;
          --unprivileged)
             UNPRIVILEGED=1
+            ;;
+         --unpriv-funcs)
+            UNPRIVILEGED_CUSTOM_FUNCTIONS="$2"
+            shift
             ;;
          --stagingdir)
             STAGING_DIR="$2"
@@ -235,7 +257,7 @@ import2lxd() {
    return 0
 }
 
-unprivileged_rootfs() {
+unpriv_journald () {
 
    pushd ${STAGING_DIR}/rootfs/etc/systemd/system
 
@@ -243,12 +265,27 @@ unprivileged_rootfs() {
    # start correctly on unprivileged container
    ln -s /dev/null systemd-journald-audit.socket
 
+   popd
+
+   return 0
+}
+
+unpriv_remountfs () {
+
+   pushd ${STAGING_DIR}/rootfs/etc/systemd/system
+
    # Disable systemd-remount-fs.service because on unprivileged container
    # systemd can't remount filesystem
    ln -s /dev/null systemd-remount-fs.service
 
-   # Clean journal directory (to avoid permission errors)
-   rm -rf ${STAGING_DIR}/rootfs/var/log/journal/
+   popd
+
+   return 0
+}
+
+unpriv_systemd_sysctl () {
+
+   pushd ${STAGING_DIR}/rootfs/etc/systemd/system
 
    # Change execution of service systemd-sysctl to avoid errors.
    mkdir systemd-sysctl.service.d
@@ -258,18 +295,75 @@ ExecStart=
 ExecStart=/usr/lib/systemd/systemd-sysctl  --prefix=/etc/sysctl.d/
 EOF
 
+    popd
+
+    return 0
+}
+
+unpriv_dev_hugepages () {
+
+   pushd ${STAGING_DIR}/rootfs/etc/systemd/system
+
    # Disable mount of hugepages
    ln -s /dev/null dev-hugepages.mount
 
    popd
+
+   return 0
+}
+
+unpriv_sec_limits () {
 
    pushd ${STAGING_DIR}/rootfs
 
    # Disable sabayon-anti-fork-bomb limits (already apply to lxc container manager)
    sed -i -e 's/^*/#*/g'   ./etc/security/limits.d/00-sabayon-anti-fork-bomb.conf || return 1
    sed -i -e 's/^root/#root/g'   ./etc/security/limits.d/00-sabayon-anti-fork-bomb.conf || return 1
+   popd
+
+   return 0
+}
+
+unpriv_clean_journal () {
+
+   pushd ${STAGING_DIR}/rootfs/etc/systemd/system
+
+   # Clean journal directory (to avoid permission errors)
+   rm -rf ${STAGING_DIR}/rootfs/var/log/journal/
 
    popd
+
+}
+
+unprivileged_rootfs() {
+
+   local func=""
+   local def_unpriv_tasks=(
+      "systemd_sysctl"
+      "remountfs"
+      "journald"
+      "dev_hugepages"
+      "sec_limits"
+      "clean_journal"
+   )
+
+   if [ -n "${UNPRIVILEGED_CUSTOM_FUNCTIONS}" ] ; then
+      source ${UNPRIVILEGED_CUSTOM_FUNCTIONS} || \
+         die "Error on source file ${UNPRIVILEGED_CUSTOM_FUNCTIONS}"
+   fi
+
+   if [ -n "${UNPRIVILEGED_FUNCTIONS}" ] ; then
+      def_unpriv_tasks=${UNPRIVILEGED_FUNCTIONS}
+   fi
+
+   for func in ${def_unpriv_tasks} ; do
+      if type -t unpriv_${func} > /dev/null ; then
+         echo "Executing function unpriv_${func}..."
+         unpriv_${func}
+      else
+         echo "Function unpriv_${func} not found."
+      fi
+   done
 
    return 0
 }
@@ -292,7 +386,7 @@ export_docker_rootfs () {
      pushd "${STAGING_DIR}"/rootfs
 
      # Export rootfs from container to staging dir
-     docker export  "${tmp_container}" | tar -xpf -
+     docker export "${tmp_container}" | tar -xpf -
 
      # Remove temporary container
      docker rm ${tmp_container}
