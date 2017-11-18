@@ -394,7 +394,7 @@ main() {
       exit 1
    fi
 
-#   update_docker_companion
+   update_docker_companion
 
    export_docker_rootfs
 
